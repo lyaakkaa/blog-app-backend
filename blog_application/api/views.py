@@ -12,6 +12,7 @@ from .serializers import UserSerializer
 from rest_framework_jwt.settings import api_settings 
 from rest_framework.permissions import IsAuthenticated
 from django.utils.timezone import now
+from django.utils.dateparse import parse_datetime
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -20,10 +21,30 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='posts')
     def user_posts(self, request, pk=None):
         user = self.get_object()
-        posts = Post.objects.filter(user=user)  # Get all posts for the specific user
+        posts = Post.objects.filter(user=user) 
+        
+        start_date = request.query_params.get('start_date') 
+        end_date = request.query_params.get('end_date')      
+
+        if start_date:
+            try:
+                start_date = parse_datetime(start_date)
+                posts = posts.filter(pub_date__gte=start_date)
+            except ValueError:
+                return Response({'error': 'Invalid start_date format. Use ISO 8601 format.'}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        if end_date:
+            try:
+                end_date = parse_datetime(end_date)
+                posts = posts.filter(pub_date__lte=end_date)  
+            except ValueError:
+                return Response({'error': 'Invalid end_date format. Use ISO 8601 format.'}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+
         serializer = PostSerializer(posts, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
+    
     def update(self, request, *args, **kwargs):
         user = self.get_object()  # This retrieves the user by the ID provided in the URL (e.g., /api/users/1/)
 
