@@ -67,6 +67,17 @@ class UserViewSet(viewsets.ModelViewSet):
             user.favorite_users.add(favorite_user)
             user.save()
             return Response({'message': 'User added to favorites successfully.'}, status=status.HTTP_200_OK)
+        
+
+    @action(detail=True, methods=['get'], url_path='friends')
+    def get_friends(self, request, pk=None):
+        """
+        Возвращает список друзей пользователя (взаимные подписки).
+        """
+        user = self.get_object()
+        mutual_favorites = user.favorite_users.filter(favorite_users=user)
+        serializer = UserSerializer(mutual_favorites, many=True, context={'request': request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TopicViewSet(viewsets.ModelViewSet):

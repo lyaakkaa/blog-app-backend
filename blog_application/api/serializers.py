@@ -10,6 +10,11 @@ class UserSerializer(serializers.ModelSerializer):
             'age': {'required': False, 'allow_null': True},
             'location': {'required': False}
         }
+    def get_avatar(self, obj):
+        request = self.context.get('request')  # Access the current request from the context
+        if obj.avatar and request:
+            return request.build_absolute_uri(obj.avatar.url)
+        return None
 
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
