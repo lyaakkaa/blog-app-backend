@@ -13,6 +13,7 @@ from rest_framework_jwt.settings import api_settings
 from rest_framework.permissions import IsAuthenticated
 from django.utils.timezone import now
 from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -99,6 +100,56 @@ class UserViewSet(viewsets.ModelViewSet):
         mutual_favorites = user.favorite_users.filter(favorite_users=user)
         serializer = UserSerializer(mutual_favorites, many=True, context={'request': request})
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+    @action(detail=True, methods=['get'], url_path='get_statistic')
+    def get_statistic(self, request, pk=None):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+
+        # Проверка наличия параметров
+        if not start_date or not end_date:
+            return Response({'error': 'start_date and end_date are required.'}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Парсинг формата YYYY-MM-DD
+            start_date = parse_date(start_date)
+            end_date = parse_date(end_date)
+
+            if not start_date or not end_date:
+                raise ValueError("Invalid date format.")
+        except ValueError:
+            return Response({'error': 'Invalid date format. Use YYYY-MM-DD.'}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Проверка, что start_date раньше end_date
+        if start_date > end_date:
+            return Response({'error': 'start_date must be earlier than end_date.'}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Получение пользователя
+        try:
+            user = User.objects.get(id=pk)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Фильтрация постов пользователя по дате
+        posts = Post.objects.filter(user=user, pub_date__gte=start_date, pub_date__lte=end_date)
+
+        # Группировка постов по дням
+        daily_stats = {}
+        for post in posts:
+            day = post.pub_date  # pub_date уже содержит только дату
+            if day not in daily_stats:
+                daily_stats[day] = 0
+            daily_stats[day] += 1
+
+        # Преобразование результата в список
+        statistics = [{'date': str(day), 'count': count} for day, count in sorted(daily_stats.items())]
+
+        return Response(statistics, status=status.HTTP_200_OK)
+
 
 
 class TopicViewSet(viewsets.ModelViewSet):
