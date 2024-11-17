@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Topic, Post
+from .models import User, Topic, Post, Message
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -28,3 +28,14 @@ class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ['id', 'pub_date', 'rating', 'commentary', 'is_liked', 'like_count', 'user', 'topic'] 
+
+
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender = UserSerializer()  
+    receiver = UserSerializer()  
+
+    class Meta:
+        model = Message
+        fields = ['id', 'sender', 'receiver', 'text', 'timestamp', 'is_bot_response']

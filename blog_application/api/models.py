@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.timezone import now
 
 class User(models.Model):
     person_name = models.CharField(max_length=100)
@@ -31,3 +32,15 @@ class Post(models.Model):
 
     def __str__(self):
         return f"{self.commentary} by {self.user.person_name}"
+
+
+
+class Message(models.Model):
+    sender = models.ForeignKey('User', related_name='sent_messages', on_delete=models.CASCADE)
+    receiver = models.ForeignKey('User', related_name='received_messages', on_delete=models.CASCADE)
+    text = models.TextField()
+    timestamp = models.DateTimeField(default=now)
+    is_bot_response = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.sender.person_name} -> {self.receiver.person_name}: {self.text}"

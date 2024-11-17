@@ -1,14 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
-from .models import User, Topic, Post
-from .serializers import UserSerializer, TopicSerializer, PostSerializer
+from .models import User, Topic, Post, Message
+from .serializers import UserSerializer, TopicSerializer, PostSerializer, MessageSerializer
 import logging
 from datetime import datetime, timedelta
 from rest_framework.views import APIView
 from rest_framework.exceptions import AuthenticationFailed
-from .models import User
-from .serializers import UserSerializer
 from rest_framework_jwt.settings import api_settings 
 from rest_framework.permissions import IsAuthenticated
 from django.utils.timezone import now
@@ -223,3 +221,68 @@ class SignUpView(APIView):
             }, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+
+class MessageViewSet(viewsets.ModelViewSet):
+    queryset = Message.objects.all()
+    serializer_class = MessageSerializer
+
+    @action(detail=False, methods=['post'], url_path='send')
+    def send_message(self, request):
+        sender_id = request.data.get('sender_id')
+        receiver_id = request.data.get('receiver_id')
+        text = request.data.get('text')
+
+        if not sender_id or not receiver_id or not text:
+            return Response({'error': 'All fields are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            sender = User.objects.get(id=sender_id)
+            receiver = User.objects.get(id=receiver_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Sender or Receiver not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        user_message = Message.objects.create(sender=sender, receiver=receiver, text=text)
+
+        bot_responses = [
+            "Привет! Как твои дела?",
+            "Я тут для тебя. Спрашивай что угодно!",
+            "Спасибо за сообщение, чем могу помочь?",
+        ]
+        bot_message = Message.objects.create(
+            sender=receiver, 
+            receiver=sender,
+            text=bot_responses[len(text) % len(bot_responses)],
+            is_bot_response=True
+        )
+
+        return Response(
+            {
+                'user_message': MessageSerializer(user_message).data,
+                'bot_message': MessageSerializer(bot_message).data,
+            },
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=False, methods=['get'], url_path='history')
+    def chat_history(self, request):
+        sender_id = request.query_params.get('sender_id')
+        receiver_id = request.query_params.get('receiver_id')
+
+        if not sender_id or not receiver_id:
+            return Response({'error': 'sender_id and receiver_id are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            sender = User.objects.get(id=sender_id)
+            receiver = User.objects.get(id=receiver_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Sender or Receiver not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        messages = Message.objects.filter(
+            sender__in=[sender, receiver],
+            receiver__in=[sender, receiver]
+        ).order_by('timestamp')
+
+        return Response(MessageSerializer(messages, many=True).data, status=status.HTTP_200_OK)
