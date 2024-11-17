@@ -5,9 +5,12 @@ class User(models.Model):
     avatar = models.ImageField(upload_to='avatars/')
     email = models.EmailField(unique=True)
     login = models.CharField(max_length=100, unique=True)
-    password = models.CharField(max_length=100)  # В реальном приложении используйте хеширование паролей
+    password = models.CharField(max_length=100)   
     favorite_users = models.ManyToManyField('self', symmetrical=False, blank=True)
-    
+    age = models.PositiveIntegerField(null=True, blank=True) 
+    location = models.CharField(max_length=255, null=True, blank=True)  
+    activity = models.DateTimeField(null=True, blank=True)  
+
     def __str__(self):
         return self.person_name
 

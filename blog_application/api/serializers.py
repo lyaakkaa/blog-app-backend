@@ -6,7 +6,9 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = "__all__"
         extra_kwargs = {
-            'avatar': {'required': False} 
+            'avatar': {'required': False},
+            'age': {'required': False, 'allow_null': True},
+            'location': {'required': False}
         }
 
 class TopicSerializer(serializers.ModelSerializer):

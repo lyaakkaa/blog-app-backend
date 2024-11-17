@@ -11,6 +11,7 @@ from .models import User
 from .serializers import UserSerializer
 from rest_framework_jwt.settings import api_settings 
 from rest_framework.permissions import IsAuthenticated
+from django.utils.timezone import now
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -95,13 +96,16 @@ class SignInView(APIView):
             login = request.data.get('login')
             password = request.data.get('password')
 
-            print(f"Received login: {login}, password: {password}")
+            logger.info(f"Received login: {login}")
 
-            # Attempt to authenticate the user
             user = User.objects.filter(login=login).first()
             if user and user.password == password:  
+                user.activity = now()
+                user.save(update_fields=['activity']) 
+
                 token = jwt_encode_handler(
-                    {'userID': user.id, 'exp_time': int((datetime.now() + timedelta(days=1)).timestamp())})
+                    {'userID': user.id, 'exp_time': int((datetime.now() + timedelta(days=1)).timestamp())}
+                )
 
                 return Response({
                     'token': str(token),
